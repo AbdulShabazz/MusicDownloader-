@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Suno Hover WAV Downloader",
+  "version": "0.3.0",
+  "description": "On hover, inspects Suno track rows, opens the native context menu, actuates the WAV download option, stores files in a chosen Downloads subfolder, and suppresses duplicate downloads with a persistent cache.",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://suno.com/*",
+    "https://*.suno.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Suno Hover WAV Downloader",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://suno.com/*",
+        "https://*.suno.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

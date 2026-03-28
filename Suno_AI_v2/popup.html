@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Suno Hover WAV Downloader</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main>
+    <h1>Suno Hover WAV Downloader</h1>
+
+    <label>
+      Downloads subfolder
+      <input id="subfolder" type="text" placeholder="SunoExports/HoverWAV" />
+    </label>
+
+    <label>
+      Hover delay ms
+      <input id="hoverDelayMs" type="number" min="0" max="5000" value="450" />
+    </label>
+
+    <label>
+      Prompt text in filename
+      <input id="includePromptInFilename" type="checkbox" checked />
+    </label>
+
+    <div class="buttons">
+      <button id="scanBtn">Scan current tab</button>
+      <button id="enableBtn">Enable hover mode</button>
+      <button id="disableBtn">Disable hover mode</button>
+    </div>
+
+    <div class="buttons">
+      <button id="statsBtn">Cache stats</button>
+      <button id="clearCacheBtn">Clear cache</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+
+    <section class="status-panel">
+      <div class="status-header">
+        <h2>Status</h2>
+      </div>
+      <div id="statusLog" class="status-log" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
