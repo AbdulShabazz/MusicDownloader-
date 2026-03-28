@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Suno Tracklist Text Archiver",
+  "version": "0.3.0",
+  "description": "Auto-scrolls the active Suno track list, archives each unique track row's rendered data and innerHTML to one newline-delimited text file, and saves it into a chosen Downloads subfolder.",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://suno.com/*",
+    "https://*.suno.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Suno Tracklist Text Archiver",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://suno.com/*",
+        "https://*.suno.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
