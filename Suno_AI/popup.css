@@ -1,0 +1,26 @@
+body {
+  font-family: Arial, sans-serif;
+  min-width: 400px;
+  margin: 0;
+  padding: 12px;
+  background: #111;
+  color: #eee;
+}
+main { display: grid; gap: 10px; }
+h1 { font-size: 16px; margin: 0 0 6px; }
+label { display: grid; gap: 4px; font-size: 12px; }
+input[type="text"], input[type="number"] {
+  width: 100%; box-sizing: border-box; padding: 8px;
+  border: 1px solid #444; background: #1b1b1b; color: #eee; border-radius: 6px;
+}
+input[type="checkbox"] { justify-self: start; }
+.buttons { display: flex; gap: 8px; }
+button {
+  flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #555;
+  background: #222; color: #eee; cursor: pointer;
+}
+button:hover { background: #2b2b2b; }
+pre {
+  white-space: pre-wrap; word-break: break-word; min-height: 140px;
+  background: #171717; border: 1px solid #333; border-radius: 6px; padding: 10px; margin: 0;
+}

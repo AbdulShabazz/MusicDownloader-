@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Suno Native Batch Downloader",
+  "version": "0.2.0",
+  "description": "Downloads Suno tracks from the open tab by invoking the native row context-menu Download action, auto-scrolls lazily loaded rows, stores files in a chosen Downloads subfolder, and writes metadata sidecars.",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://suno.com/*",
+    "https://*.suno.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Suno Native Batch Downloader",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://suno.com/*",
+        "https://*.suno.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
