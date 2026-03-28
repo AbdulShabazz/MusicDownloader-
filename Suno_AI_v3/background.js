@@ -35,8 +35,8 @@ async function runTracklistArchive(tabId, options = {}) {
   const prefix = sanitizeFilename(opts.filenamePrefix || 'suno_track_archive').slice(0, 80) || 'suno_track_archive';
   const stamp = makeTimestamp();
   const filename = `${subfolder}/${prefix}_${stamp}.txt`;
-  const blob = new Blob([archiveText], { type: 'text/plain' });
-  const blobUrl = URL.createObjectURL(blob);
+  //const blob = new Blob([archiveText], { type: 'text/plain' });
+  const blobUrl = makeTextDataUrl(archiveText); //URL.createObjectURL(blob);
 
   try {
     const downloadId = await chrome.downloads.download({
@@ -56,7 +56,10 @@ async function runTracklistArchive(tabId, options = {}) {
       filename,
       downloadId
     };
-  } finally {
+  } catch (e) {
+    console.info(`unspecified parse error ${JSON.stringify(e,' ', 2)}. Continuing...`)
+  }
+  finally {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   }
 }
@@ -147,4 +150,8 @@ function sanitizeFilename(input) {
     .replace(/[\\/]+/g, '_')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function makeTextDataUrl(text) {
+  return `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`;
 }
