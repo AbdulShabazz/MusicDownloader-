@@ -23,6 +23,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import os
 
 DEFAULT_DIR = Path.cwd()
 DEFAULT_IMAGE = DEFAULT_DIR / Path("version_3.png")
@@ -155,7 +157,10 @@ def main() -> int:
     image_path = args.image.expanduser().resolve()
     audio_dir = args.audio_dir.expanduser().resolve()
     output_dir = args.output_dir.expanduser().resolve()
-    start_at_file = args.start_at_file.expanduser().resolve()
+
+    start_at_file = False
+    if args.start_at_file is not None:
+        start_at_file = args.start_at_file.expanduser().resolve()
 
     if start_at_file:
         resume_flag = True
@@ -184,16 +189,35 @@ def main() -> int:
     ok_count = 0
     fail_count = 0
 
+    cpu_count = os.cpu_count() or 1
+    max_workers = max(2, max(4, cpu_count))
+
+    selected_wavs = []
+    resume_reached = not resume_flag
+
     for wav in wav_files:
-        if not resume_flag or (wav == start_at_file):
-            resume_flag = False
-            ok, message = convert_one(
+        if not resume_reached and wav == start_at_file:
+            resume_reached = True
+        if resume_reached:
+            selected_wavs.append(wav)
+
+    max_workers = max(1, max(4, os.cpu_count()))
+
+    with ProcessPoolExecutor(max_workers=max_workers) as ex:
+        future_map = {
+            ex.submit(
+                convert_one,
                 image_path=image_path,
                 audio_path=wav,
                 output_dir=output_dir,
                 fps=args.fps,
                 overwrite=args.overwrite,
-            )
+            ): wav
+            for wav in selected_wavs
+        }
+
+        for future in as_completed(future_map):
+            ok, message = future.result()
             print(message)
             if ok:
                 ok_count += 1
