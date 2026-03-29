@@ -6,7 +6,7 @@ Manifest V3 extension that:
 - auto-scrolls the inner track list to trigger lazy loading,
 - extracts row metadata using stable row-local selectors,
 - opens each row's context menu,
-- (User) invokes Suno's native **Download** action and file format,
+- invokes Suno's native **Download** action,
 - renames the resulting browser download into a chosen subfolder under Downloads,
 - writes a `.metadata.json` sidecar per track.
 

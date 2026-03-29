@@ -1,8 +1,8 @@
 const DEFAULTS = {
   subfolder: 'SunoExports',
   maxScrollPasses: 40,
-  idleMs: 1200,
-  includePromptInFilename: true
+  idleMs: 1000,
+  includePromptInFilename: false
 };
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -43,19 +43,20 @@ chrome.downloads.onChanged.addListener((delta) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'START_NATIVE_BATCH_DOWNLOAD') {
-    runNativeBatchDownload(message.tabId, message.options)
+  if (message.type === 'START_NATIVE_BATCH_DOWNLOAD' || (message.type === 'RESUME_NATIVE_BATCH_DOWNLOAD')) {
+    runNativeBatchDownload(message.tabId, message.options, message.type)
       .then(sendResponse)
       .catch((error) => sendResponse({ ok: false, error: error.message, stack: error.stack }));
     return true;
   }
 });
 
-async function runNativeBatchDownload(tabId, options = {}) {
+async function runNativeBatchDownload(tabId, options = {}, flags) {
   const opts = { ...DEFAULTS, ...options };
   const scan = await chrome.tabs.sendMessage(tabId, {
     type: 'SUNO_AUTOSCROLL_SCAN',
-    options: opts
+    options: opts,
+    flags: flags
   });
 
   if (scan?.error) throw new Error(scan.error);
@@ -203,7 +204,7 @@ function sanitizeFilename(input) {
 }
 
 function makeTrackSlug(track, index, options) {
-  const prefix = String(index).padStart(3, '0');
+  const prefix = ''; //String(index).padStart(3, '0');
   const title = sanitizeFilename(track.title || `track_${index}`).slice(0, 80);
   const prompt = options.includePromptInFilename
     ? sanitizeFilename((track.prompt || '').slice(0, 80)).slice(0, 80)

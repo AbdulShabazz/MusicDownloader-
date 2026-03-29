@@ -13,10 +13,11 @@ async function getActiveTab() {
 
 async function loadOptions() {
   const defaults = {
+    /* Default settings are configured in background.js */
     subfolder: "SunoExports",
     maxScrollPasses: 40,
-    idleMs: 1200,
-    includePromptInFilename: true
+    idleMs: 1000,
+    includePromptInFilename: false
   };
   const data = await chrome.storage.local.get(defaults);
   $("subfolder").value = data.subfolder;
@@ -49,6 +50,22 @@ $("scanBtn").addEventListener("click", async () => {
     setStatus(JSON.stringify(result, null, 2));
   } catch (error) {
     setStatus(`Scan failed: ${error.message}`);
+  }
+});
+
+$("resumeBtn").addEventListener("click", async () => {
+  try {
+      const options = await saveOptions();
+      setStatus("Resuming auto-scroll scan and native download automation...");
+      const tab = await getActiveTab();
+      const response = await chrome.runtime.sendMessage({
+        type: "RESUME_NATIVE_BATCH_DOWNLOAD",
+        tabId: tab.id,
+        options
+      });
+      setStatus(JSON.stringify(response, null, 2));  
+  } catch (error) {
+    setStatus(`Resume failed: ${error.message}. Please scroll to item or page and try again.`);
   }
 });
 

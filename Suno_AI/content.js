@@ -157,7 +157,7 @@
     if (!item) throw new Error('Download menu item not found in open menu.');
     dispatchClick(item);
     await sleep(700);
-
+    localStorage.setItem('clipId', clipId);
     return { ok: true, clipId };
   }
 
@@ -168,7 +168,25 @@
         return;
       }
       if (message.type === 'SUNO_AUTOSCROLL_SCAN') {
-        sendResponse(await autoScrollTrackList(message.options || {}));
+        let o = await autoScrollTrackList(message.options || {});
+        const lastClipId = localStorage.getItem('clipId') || false;
+        if(message.flags.match('RESUME_NATIVE_BATCH_DOWNLOAD') && lastClipId?.length) {
+          let tmpTracks = [];
+          let bResumeTracksFlag = false;
+          for(let tt of o.tracks){
+            if(!bResumeTracksFlag) {
+              if (tt.id === lastClipId) {
+                bResumeTracksFlag = true;
+              }
+            } else {
+              tmpTracks.push(tt);
+            }
+          }
+          if (tmpTracks.length) {
+            o.tracks = tmpTracks;
+          }
+        }
+        sendResponse(o);
         return;
       }
       if (message.type === 'SUNO_TRIGGER_NATIVE_DOWNLOAD') {
