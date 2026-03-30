@@ -25,6 +25,8 @@ import sys
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
+import time
+from collections import deque
 
 DEFAULT_DIR = Path.cwd()
 DEFAULT_IMAGE = DEFAULT_DIR / Path("version_3.png")
@@ -60,6 +62,8 @@ def build_ffmpeg_command(
     output_path: Path,
     fps: int,
     video_fade_sec: float = 1.0,
+    threads: int = 1,
+    filter_complex_threads = 1,
 ) -> list[str]:
     duration = ffprobe_duration_seconds(audio_path)
     fade_out_start = max(0.0, duration - video_fade_sec)
@@ -79,6 +83,8 @@ def build_ffmpeg_command(
     return [
         "ffmpeg",
         "-y",
+        "-threads", str(threads),
+        "-filter_complex_threads", str(filter_complex_threads),
         "-loop", "1",
         "-framerate", str(fps),
         "-i", str(image_path),
@@ -116,6 +122,8 @@ def convert_one(
     output_dir: Path,
     fps: int,
     overwrite: bool,
+    threads: int = 1,
+    filter_complex_threads = 1,
 ) -> tuple[bool, str]:
     out_name = sanitize_output_name(audio_path) + ".mov"
     output_path = output_dir / out_name
@@ -142,7 +150,10 @@ def main() -> int:
     parser.add_argument("--audio-dir", type=Path, default=DEFAULT_AUDIO_DIR, help="Directory containing WAV files")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for rendered videos")
     parser.add_argument("--fps", type=int, default=60, help="Video frame rate")
-    parser.add_argument("--start_at_file", type=Path, default=None, help="Directory containing WAV files")
+    parser.add_argument("--start_at_file", type=Path, default=None, help="WAV file")
+    parser.add_argument("--target_file", type=Path, default=None, help="WAV file")
+    parser.add_argument("--threads", type=int, default=1, help="Worker threads per file")
+    parser.add_argument("--filter_complex_threads", type=int, default=1, help="(ffmpeg complex filter) Worker threads per file")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing outputs")
     args = parser.parse_args()
 
@@ -153,17 +164,24 @@ def main() -> int:
         print(str(e), file=sys.stderr)
         return 2
 
+    target_flag = False
     resume_flag = False
+
+    target_file = False
+    start_at_file = False
+
     image_path = args.image.expanduser().resolve()
     audio_dir = args.audio_dir.expanduser().resolve()
     output_dir = args.output_dir.expanduser().resolve()
-
-    start_at_file = False
-    if args.start_at_file is not None:
+    
+    if args.target_file is not None:
+        target_file = args.target_file.expanduser().resolve()
+        if target_file:
+            target_flag = True
+    elif args.start_at_file is not None:
         start_at_file = args.start_at_file.expanduser().resolve()
-
-    if start_at_file:
-        resume_flag = True
+        if start_at_file:
+            resume_flag = True
 
     if not image_path.is_file():
         print(f"Cover art not found: {image_path}", file=sys.stderr)
@@ -173,14 +191,24 @@ def main() -> int:
         print(f"Audio directory not found: {audio_dir}", file=sys.stderr)
         return 2
 
-    wav_files = sorted(audio_dir.glob("*.wav"))
+    if target_flag:
+        wav_files = [target_file]
+    else:
+        wav_files = sorted(audio_dir.glob("*.wav"))
+
     if not wav_files:
         print(f"No WAV files found in: {audio_dir}", file=sys.stderr)
         return 1
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Cover art : {image_path}")
+    # cpu_count = os.cpu_count() or 1
+    # max_workers = max(2, max(4, cpu_count))
+    max_workers = os.cpu_count()
+
+    print()
+    print(f"cpu cores  : {int(max_workers)}")
+    print(f"Cover art  : {image_path}")
     print(f"Audio dir  : {audio_dir}")
     print(f"Output dir : {output_dir}")
     print(f"WAV count  : {len(wav_files)}")
@@ -188,9 +216,6 @@ def main() -> int:
 
     ok_count = 0
     fail_count = 0
-
-    cpu_count = os.cpu_count() or 1
-    max_workers = max(2, max(4, cpu_count))
 
     selected_wavs = []
     resume_reached = not resume_flag
@@ -201,28 +226,40 @@ def main() -> int:
         if resume_reached:
             selected_wavs.append(wav)
 
-    max_workers = max(1, max(4, os.cpu_count()))
-
     with ProcessPoolExecutor(max_workers=max_workers) as ex:
-        future_map = {
-            ex.submit(
-                convert_one,
-                image_path=image_path,
-                audio_path=wav,
-                output_dir=output_dir,
-                fps=args.fps,
-                overwrite=args.overwrite,
-            ): wav
-            for wav in selected_wavs
-        }
+        wavs_remaining = deque(selected_wavs)
+        active = {} # {future: wav}
 
-        for future in as_completed(future_map):
-            ok, message = future.result()
-            print(message)
-            if ok:
-                ok_count += 1
-            else:
-                fail_count += 1
+        while wavs_remaining or active:
+            # Assign tasks while CPUs are available
+            while wavs_remaining and len(active) < max_workers:
+                wav = wavs_remaining.popleft()
+                fut = ex.submit(
+                    convert_one,
+                    image_path=image_path,
+                    audio_path=wav,
+                    output_dir=output_dir,
+                    fps=args.fps,
+                    overwrite=args.overwrite,
+                    threads=args.threads,
+                    filter_complex_threads=args.filter_complex_threads,
+                )
+                active[fut] = wav            
+
+            # Find completed tasks
+            done_futures = [fut for fut in active if fut.done()]
+
+            for fut in done_futures:
+                active.pop(fut)
+                try:
+                    ok, message = fut.result()
+                    print(message)
+                    if ok:
+                        ok_count += 1
+                    else:
+                        fail_count += 1
+                except Exception as e:
+                    fail_count += 1
 
     print()
     print(f"completed: {ok_count}")
