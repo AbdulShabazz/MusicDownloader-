@@ -33,6 +33,7 @@ DEFAULT_IMAGE = DEFAULT_DIR / Path("version_3.png")
 DEFAULT_AUDIO_DIR = DEFAULT_DIR # / Path("/")
 DEFAULT_OUTPUT_DIR = DEFAULT_DIR / "4K_Video"
 
+max_workers = 1 # os.cpu_count() # Total allocated cpus
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=True, text=True, capture_output=True)
@@ -80,11 +81,16 @@ def build_ffmpeg_command(
     # - prores_ks profile 4 = ProRes 4444
     # - yuva444p10le preserves alpha-capable 4:4:4 10-bit pipeline
     # - pcm_s24le stores high-quality uncompressed 24-bit audio
-    return [
-        "ffmpeg",
-        "-y",
-        "-threads", str(threads),
-        "-filter_complex_threads", str(filter_complex_threads),
+
+    cmd = ["ffmpeg", "-y"]
+
+    if max_workers > 1: # threads constraints for stability
+        cmd += [
+            "-threads", str(threads),
+            "-filter_complex_threads", str(filter_complex_threads),
+        ]
+
+    cmd += [
         "-loop", "1",
         "-framerate", str(fps),
         "-i", str(image_path),
@@ -106,6 +112,8 @@ def build_ffmpeg_command(
         "-shortest",
         str(output_path),
     ]
+
+    return cmd
 
 
 def sanitize_output_name(path: Path) -> str:
@@ -204,7 +212,7 @@ def main() -> int:
 
     # cpu_count = os.cpu_count() or 1
     # max_workers = max(2, max(4, cpu_count))
-    max_workers = os.cpu_count()
+    #max_workers = os.cpu_count()
 
     print()
     print(f"cpu cores  : {int(max_workers)}")
