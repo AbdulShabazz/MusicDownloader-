@@ -269,6 +269,9 @@ def main() -> int:
                 except Exception as e:
                     fail_count += 1
 
+            if active:
+                time.sleep(0.1)
+
     print()
     print(f"completed: {ok_count}")
     print(f"failed   : {fail_count}")
